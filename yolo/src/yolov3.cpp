@@ -29,7 +29,7 @@ const char* OUTPUT_BLOB_NAME = "prob";
 static Logger gLogger;
 
 
-void doInference(IExecutionContext& context, float* input, float* output, int batchSize) {
+static void doInference(IExecutionContext& context, float* input, float* output, int batchSize) {
     const ICudaEngine& engine = context.getEngine();
 
     // Pointers to input and output device buffers to pass to engine.
@@ -62,6 +62,38 @@ void doInference(IExecutionContext& context, float* input, float* output, int ba
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
 }
 
+typedef struct 
+{
+ 
+    float *data;
+    float *prob;
+    IRuntime *runtime;
+    ICudaEngine *engine;
+    IExecutionContext *exe_context;
+    void* buffers[2];
+    cudaStream_t cuda_stream;
+    int inputIndex;
+    int outputIndex;
+    char result_json_str[16384];
+ 
+}Yolov3TRTContext;
+
+typedef struct{
+	int class_id;
+	int x1;
+	int y1;
+	int x2; 
+	int y2;
+	float conf;
+	
+}DeepsortContext;
+
+
+void * yolov3TrtCreate(const char * engine_name){
+
+}
+
+//========================================================================================================
 int main(int argc, char** argv) {
     cudaSetDevice(DEVICE);
     // create a model using the API directly and serialize it to a stream
