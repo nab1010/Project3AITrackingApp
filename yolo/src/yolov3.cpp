@@ -15,6 +15,7 @@
 #define DEVICE 0  // GPU id
 #define NMS_THRESH 0.4
 #define BBOX_CONF_THRESH 0.5
+#define BATCH_SIZE 1
 
 using namespace nvinfer1;
 
@@ -27,6 +28,8 @@ static const int OUTPUT_SIZE = Yolo::MAX_OUTPUT_BBOX_COUNT * DETECTION_SIZE + 1;
 const char* INPUT_BLOB_NAME = "data";
 const char* OUTPUT_BLOB_NAME = "prob";
 static Logger gLogger;
+
+
 
 
 static void doInference(IExecutionContext& context, float* input, float* output, int batchSize) {
@@ -61,7 +64,17 @@ static void doInference(IExecutionContext& context, float* input, float* output,
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
 }
-
+// ===============================================================================================
+static void  doInference(IExecutionContext& contex, cudaStream_t& stream, void ** buffers, float* input, float* output, int batchSize){
+    const int inputIndex = engine.getBindingIndex(INPUT_BLOB_NAME);
+    const int outputIndex = engine.getBindingIndex(OUTPUT_BLOB_NAME);
+    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], input, batchSize * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream));
+    
+    context.enqueue(batchSize, buffers, stream, nullptr);
+    CUDA_CHECK(cudaMemcpyAsync(output, buffers[outputIndex], batchSize * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    cudaStreamSynchronize(stream);
+}
+// ===============================================================================================
 typedef struct 
 {
  
@@ -90,6 +103,35 @@ typedef struct{
 
 
 void * yolov3TrtCreate(const char * engine_name){
+    size_t  size = 0;
+    char *trtModelStream = NULL;
+    Yolov3TRTContext *trt_ctx = NULL;
+    trt_ctx = new Yolov3TRTContext();
+    std::ifstream file("/home/nab/Desktop/ProjectAITrackingAPPResources/nab_yolov3_320.engine", std::ios::binary);
+    if (file.good()) {
+            file.seekg(0, file.end);
+            size = file.tellg();
+            file.seekg(0, file.beg);
+            trtModelStream = new char[size];
+            assert(trtModelStream);
+            file.read(trtModelStream, size);
+            file.close();
+    }else {
+        return NULL;
+    }
+    
+    trt_ctx->data = new float[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
+    trt_ctx->prob = new float[BATCH_SIZE * 3 * OUTPUT_SIZE];
+    trt_ctx->runtime = createInferRuntime(gLogger);
+    assert(trt->runtime != nullptr);
+
+    txt_ctx->engine = trt_ctx->runtime->deserializeCudaEngine(trtModelStream, size);
+    assert(trt_ctx->engine != nullptr);
+    YoLoLayer()
+
+
+
+
 
 }
 
